@@ -1,4 +1,5 @@
 from enum import Enum
+from time import sleep
 
 Direction = Enum('Direction', ['NE', 'E', 'SE', 'SW', 'W', 'NW'])
 
@@ -24,12 +25,40 @@ class Position():
         Coord(4, 13),
     ]
     
-
+class Movement():
+    def __init__(self, board) -> None:
+        self.board = board
+    
+    def move(self, coord: Coord, direction: Direction):
+        if self.board.get(coord) == 2:
+            self.board.set(coord, 1)
+            if direction == Direction.NE:
+                self.board.set(Coord(coord.x, coord.y-1), 2)
+        
+class StateTracker:
+    history = []
+    
+    def update(self, state):
+        self.history.append(state)
+            
+class Board():
+    def __init__(self, state_tracker: StateTracker, initial) -> None:
+        self.current = initial
+        self.state_tracker = state_tracker
+        state_tracker.update(initial)
+        
+    def set(self, coord: Coord, state):
+        self.current[coord.y][coord.x] = state
+        self.state_tracker.update(self.current)
+        
+    def get(self, coord: Coord) -> int:
+        return self.current[coord.y][coord.x]
+    
 class Player:
     def __init__(self, starting_coords) -> None:
         self.starting_coords = starting_coords
-
-pixel_map = [
+        
+initial_state = [
     [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0], # 0
     [0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0], # 1
     [0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0], # 2
@@ -49,27 +78,24 @@ pixel_map = [
     [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0], # 16
 ]
 
-def move(coord: Coord, direction: Direction):
-    if get_state(coord) == 2:
-        depopulate(coord)
-        if direction == Direction.NE:
-            populate(Coord(coord.x, coord.y-1))
+# def move(coord: Coord, direction: Direction):
+#     if get_state(coord) == 2:
+#         depopulate(coord)
+#         if direction == Direction.NE:
+#             populate(Coord(coord.x, coord.y-1))
             
-def get_state(coord: Coord):
-    return pixel_map[coord.y][coord.x]
+# def get_state(coord: Coord):
+#     return initial_state[coord.y][coord.x]
         
-def populate_player(player: Player):
-    for coord in player.starting_coords:
-        populate(coord)
         
-def depopulate(coord: Coord):
-    if pixel_map[coord.y][coord.x] == 2:
-        pixel_map[coord.y][coord.x] = 1
+# def depopulate(coord: Coord):
+#     if initial_state[coord.y][coord.x] == 2:
+#         initial_state[coord.y][coord.x] = 1
 
-def populate(coord: Coord):
-    pixel_map[coord.y][coord.x] = 2
+# def populate(coord: Coord):
+#     initial_state[coord.y][coord.x] = 2
 
-def render(screen_map=pixel_map):
+def render(screen_map=initial_state):
     render_str = ""
     count = 0
     for line in screen_map:
@@ -85,8 +111,23 @@ def render(screen_map=pixel_map):
         render_str += "\n"
         count += 1
     print(render_str)
-
-populate_player(Player(Position.SOUTH))
-render()
-move(Coord(4, 13), Direction.NE)
-render()
+    
+def run():
+    p1 = Player(Position.SOUTH)
+    state_tracker = StateTracker()
+    board = Board(state_tracker, initial_state)
+    movement = Movement(board)
+    
+    # populate initial
+    for coord in p1.starting_coords:
+        board.set(coord, 2)
+        
+    render()
+        
+    # make 1 move
+    movement.move(Coord(4, 13), Direction.NE)
+    
+    render()
+    
+run()
+    
