@@ -105,10 +105,16 @@ class Board():
         for coord in coords:
             current_state[coord.y][coord.x] = 2
         self._update_history(current_state)
-        
+    
     def move(self, old_coord, new_coord):
         current_state = self._get_all_states()
+        current_state[old_coord.y][old_coord.x] = 3
+        self._update_history(current_state)
+        current_state = self._get_all_states()
         current_state[old_coord.y][old_coord.x] = 1
+        current_state[new_coord.y][new_coord.x] = 3
+        self._update_history(current_state)
+        current_state = self._get_all_states()
         current_state[new_coord.y][new_coord.x] = 2
         self._update_history(current_state)
         
@@ -213,7 +219,7 @@ def run():
     board = Board(copy.deepcopy(initial_state))
     movement = Movement(board)
 
-    board.set_all(p1.starting_coords, 2, True)
+    board.populate_all(p1.starting_coords)
     directions = []
     for d in Direction:
         directions.append(d)
