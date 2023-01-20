@@ -4,6 +4,16 @@ import copy
 import os
 import random
 
+class Colors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 class Direction(Enum):
     NE = 0
@@ -151,6 +161,8 @@ class Animation():
                         frame_str += "○   "
                     if pixel == 2:
                         frame_str += "●   "
+                    if pixel == 3:
+                        frame_str += "◎   "
                 if count % 2 == 0:
                     frame_str += "  "
                 frame_str += "\n"
@@ -201,22 +213,22 @@ def run():
     board = Board(copy.deepcopy(initial_state))
     movement = Movement(board)
 
-    # board.populate_all(p1.starting_coords)
-    # directions = []
-    # for d in Direction:
-    #     directions.append(d)
+    board.set_all(p1.starting_coords, 2, True)
+    directions = []
+    for d in Direction:
+        directions.append(d)
     
-    # while len(board.history) <= 20:
-    #     coords = board.get_coords_with_state(2)
-    #     piece_coord = random.choice(coords)
-    #     piece_new_coord = movement.move(piece_coord, random.choice(directions))
-    #     if jumped(piece_coord, piece_new_coord):
-    #         movement.move(piece_coord, random.choice(directions))
+    while len(board.history) <= 20:
+        coords = board.get_coords_with_state(2)
+        start = random.choice(coords)
+        dest = movement.move(start, random.choice(directions))
+        if dest != None and jumped(start, dest):
+            movement.move(start, random.choice(directions))
             
-    board.populate_all([Coord(6, 8), Coord(6, 7), Coord(7, 5)])
-    dest = movement.move(Coord(6, 8), Direction.SW)
-    if jumped(Coord(6, 8), dest):
-        movement.move(dest, Direction.NE)
+    # board.populate_all([Coord(6, 8), Coord(6, 7), Coord(7, 5)])
+    # dest = movement.move(Coord(6, 8), Direction.SW)
+    # if jumped(Coord(6, 8), dest):
+    #     movement.move(dest, Direction.NE)
         
     animator = Animation(board.history)
     # animator.print()
