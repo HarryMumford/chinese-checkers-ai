@@ -215,15 +215,15 @@ def run():
             
     board.populate_all([Coord(6, 8), Coord(6, 7), Coord(7, 5)])
     dest = movement.move(Coord(6, 8), Direction.SW)
-    if jumped:
+    if jumped(Coord(6, 8), dest):
         movement.move(dest, Direction.NE)
         
     animator = Animation(board.history)
-    animator.print()
-    # animator.run()
+    # animator.print()
+    animator.run()
     
 def jumped(coord: Coord, new_coord: Coord) -> bool:
-   if abs(coord.x - coord.x) == 2 or abs(coord.y - coord.y) == 2:
+   if abs(coord.x - new_coord.x) == 2 or abs(coord.y - new_coord.y) == 2:
        return True
         
 run()
