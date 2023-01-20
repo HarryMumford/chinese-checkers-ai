@@ -34,13 +34,36 @@ class Movement():
     def __init__(self, board) -> None:
         self.board = board
 
-    def move(self, coord: Coord, direction: Direction):
+    def move(self, coord: Coord, direction: Direction) -> Coord: 
         if self.board.get(coord) == 2:
+            if direction == Direction.E:
+                new_coord = Coord(coord.x+1, coord.y)
+            if direction == Direction.SE:
+                if coord.y % 2 == 0:
+                    new_coord = Coord(coord.x, coord.y+1)
+                else:
+                    new_coord = Coord(coord.x+1, coord.y+1)
+            if direction == Direction.SW:
+                if coord.y % 2 == 0:
+                    new_coord = Coord(coord.x-1, coord.y+1)
+                else:
+                    new_coord = Coord(coord.x, coord.y+1)
+            if direction == Direction.W:
+                new_coord = Coord(coord.x-1, coord.y)
+            if direction == Direction.NW:
+                if coord.y % 2 == 0:
+                    new_coord = Coord(coord.x-1, coord.y-1)
+                else:
+                    new_coord = Coord(coord.x, coord.y-1)
             if direction == Direction.NE:
-                self.board.move(coord, Coord(coord.x, coord.y-1))
-
-
-
+                if coord.y % 2 == 0:
+                    new_coord = Coord(coord.x, coord.y-1)
+                else:
+                    new_coord = Coord(coord.x+1, coord.y-1)
+        
+        self.board.move(coord, new_coord)
+        return new_coord
+             
 class Board():
     history = []
     
@@ -75,7 +98,7 @@ class Player:
         self.starting_coords = starting_coords
 
 
-class Animator():
+class Animation():
     frames = []
 
     def __init__(self, state_history) -> None:
@@ -97,6 +120,7 @@ class Animator():
             self.frames.append(frame_str)
             
     def run(self) -> None:
+        sleep(1)
         os.system('clear')
         for f in self.frames:
             print(f)
@@ -129,11 +153,22 @@ def run():
     movement = Movement(board)
 
     board.populate_all(p1.starting_coords)
-    
-    # make 1 move
-    movement.move(Coord(4, 13), Direction.NE)
 
-    animator = Animator(board.history)
+    
+    dest = movement.move(Coord(4, 13), Direction.NW)
+    dest = movement.move(dest, Direction.NW)
+    dest = movement.move(dest, Direction.NW)
+    dest = movement.move(dest, Direction.NE)
+    dest = movement.move(dest, Direction.NE)
+    dest = movement.move(dest, Direction.SE)
+    dest = movement.move(dest, Direction.SE)
+    dest = movement.move(dest, Direction.SW)
+    dest = movement.move(dest, Direction.SW)
+    dest = movement.move(dest, Direction.E)
+    dest = movement.move(dest, Direction.W)
+    
+
+    animator = Animation(board.history)
     animator.run()
     
 run()
