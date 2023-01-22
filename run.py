@@ -46,7 +46,6 @@ class Position():
         Coord(4, 13),
     ]
 
-
 class Movement():
     def __init__(self, board) -> None:
         self.board = board
@@ -57,14 +56,22 @@ class Movement():
             return None
         
         if self.board.get_state(adjacent_coord) == 1:
-            self.board.move(coord, adjacent_coord)
+            self.board.move(coord, adjacent_coord, True)
             return adjacent_coord
+    
+    def jump(self, coord: Coord, direction: Direction, end_turn: bool) -> Coord: 
+        adjacent_coord = self._get_adjacent_coord(coord, direction)
+        if self.board.get_state(adjacent_coord) == 0:
+            return None
+        
+        if self.board.get_state(adjacent_coord) == 1:
+            return None
         
         jump_dest = self._get_adjacent_coord(adjacent_coord, direction)
         if self.board.get_state(jump_dest) == 0 or self.board.get_state(jump_dest) == 2:
             return None
         
-        self.board.move(coord, jump_dest)
+        self.board.move(coord, jump_dest, end_turn)
         return jump_dest
         
     def _get_adjacent_coord(self, coord: Coord, direction: Direction) -> Coord:
@@ -93,44 +100,69 @@ class Movement():
             else:
                 new_coord = Coord(coord.x+1, coord.y-1)
         return new_coord
-             
+    
+class BoardState:
+    state = [[]]
+    turn: int
+    
+    def __init__(self, state, turn: int) -> None:
+        self.state = state
+        self.turn = turn
+
+    def __str__(self) -> str:
+            frame_str = "turn: " + str(self.turn) + "\n"
+            for line in self.state:
+                count = 0
+                if count % 2 != 0:
+                    frame_str += "  "
+                for pixel in line:
+                    if pixel == 0:
+                        frame_str += "    "
+                    if pixel == 1:
+                        frame_str += "○   "
+                    if pixel == 2:
+                        frame_str += "●   "
+                    if pixel == 3:
+                        frame_str += "◎   "
+                if count % 2 == 0:
+                    frame_str += "  "
+                frame_str += "\n"
+                count += 1
+                return frame_str
+    
+
 class Board():
     history = []
-    
+
     def __init__(self, initial_state) -> None:
-        self.history.append(copy.deepcopy(initial_state))
+        self.width = len(initial_state)
+        self.height = len(initial_state[0])
+        self.history.append(BoardState(copy.deepcopy(initial_state), 0))
         
-    def populate_all(self, coords):
+    def populate_all(self, coords) -> None:
         current_state = self._get_all_states()
         for coord in coords:
-            current_state[coord.y][coord.x] = 2
-        self._update_history(current_state)
+            current_state.state[coord.y][coord.x] = 2
+        self.history.append(current_state)
     
-    def move(self, old_coord, new_coord):
+    def move(self, old_coord: Coord, new_coord: Coord, end_turn: bool) -> None:
         current_state = self._get_all_states()
-        current_state[old_coord.y][old_coord.x] = 3
-        self._update_history(current_state)
+        current_state.state[old_coord.y][old_coord.x] = 3
+        self.history.append(current_state)
         current_state = self._get_all_states()
-        current_state[old_coord.y][old_coord.x] = 1
-        current_state[new_coord.y][new_coord.x] = 3
-        self._update_history(current_state)
-        current_state = self._get_all_states()
-        current_state[new_coord.y][new_coord.x] = 2
-        self._update_history(current_state)
-        
-    def get_state(self, coord: Coord) -> int:
-        current_state = self._get_all_states()
-        if len(current_state)-1 < coord.y or len(current_state[0])-1 < coord.x:
-            return 0
-        return current_state[coord.y][coord.x]
-    
-    def _update_history(self, board_state):
-        self.history.append(board_state)
+        current_state.state[old_coord.y][old_coord.x] = 1
+        current_state.state[new_coord.y][new_coord.x] = 3
+        self.history.append(current_state)
+        if end_turn:
+            current_state = self._get_all_states()
+            current_state.state[new_coord.y][new_coord.x] = 2
+            current_state.turn += 1
+            self.history.append(current_state)
         
     def get_coords_with_state(self, state: int):
         coords = []
         y = 0
-        for row in self._get_all_states():
+        for row in self._get_all_states().state:
             x = 0
             for s in row:
                 if s == state:
@@ -140,9 +172,14 @@ class Board():
                
         return coords
         
-    def _get_all_states(self):
-        return copy.deepcopy(self.history[-1])
-
+        
+    def get_state(self, coord: Coord) -> int:
+        if coord.x > self.width - 1 or coord.y > self.height - 1:
+            return 0
+        return self.history[-1].state[coord.y][coord.x]
+            
+    def _get_all_states(self) -> BoardState: 
+        return BoardState(copy.deepcopy(self.history[-1].state), self.history[-1].turn)
 
 class Player:
     def __init__(self, starting_coords) -> None:
@@ -155,9 +192,9 @@ class Animation():
     def __init__(self, state_history) -> None:
         self.state_history = state_history 
         for state in state_history:
-            frame_str = ""
+            frame_str = "turn: " + str(state.turn) + "\n"
             count = 0
-            for line in state:
+            for line in state.state:
                 if count % 2 != 0:
                     frame_str += "  "
                 for pixel in line:
@@ -175,23 +212,11 @@ class Animation():
                 count += 1
             self.frames.append(frame_str)
             
-    def print(self) -> None:
-        str = ""
-        i = 0
-        while i <len(self.state_history[0]):
-            for f in self.frames:
-                lines = f.splitlines()
-                str += lines[i]
-            str += "\n"
-            i += 1
-            
-        print(str)
-            
     def run(self) -> None:
         os.system('clear')
         for f in self.frames:
             print(f)
-            sleep(1)
+            sleep(0.7)
             os.system('clear')
 
 def run():
@@ -223,25 +248,17 @@ def run():
     directions = []
     for d in Direction:
         directions.append(d)
-    
-    while len(board.history) <= 20:
+    i = 0
+    while i <= 40:
         coords = board.get_coords_with_state(2)
-        start = random.choice(coords)
-        dest = movement.move(start, random.choice(directions))
-        if dest != None and jumped(start, dest):
-            movement.move(start, random.choice(directions))
-            
-    # board.populate_all([Coord(6, 8), Coord(6, 7), Coord(7, 5)])
-    # dest = movement.move(Coord(6, 8), Direction.SW)
-    # if jumped(Coord(6, 8), dest):
-    #     movement.move(dest, Direction.NE)
+        movement.move(random.choice(coords), random.choice(directions))
+        i += 1
         
     animator = Animation(board.history)
-    # animator.print()
     animator.run()
     
 def jumped(coord: Coord, new_coord: Coord) -> bool:
    if abs(coord.x - new_coord.x) == 2 or abs(coord.y - new_coord.y) == 2:
        return True
-        
+           
 run()
