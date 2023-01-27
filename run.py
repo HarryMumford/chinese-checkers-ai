@@ -61,19 +61,19 @@ class Movement():
     
     def jump(self, coord: Coord, direction: Direction, end_turn: bool) -> Coord: 
         adjacent_coord = self._get_adjacent_coord(coord, direction)
-        if self.board.get_state(adjacent_coord) == 0:
-            return None
         
-        if self.board.get_state(adjacent_coord) == 1:
-            return None
+        s = self.board.get_state(adjacent_coord)
+       
         
-        jump_dest = self._get_adjacent_coord(adjacent_coord, direction)
-        if self.board.get_state(jump_dest) == 0 or self.board.get_state(jump_dest) == 2:
-            return None
-        
-        self.board.move(coord, jump_dest, end_turn)
-        return jump_dest
-        
+        if self.board.get_state(adjacent_coord) == 2:
+            jump_dest = self._get_adjacent_coord(adjacent_coord, direction)
+            print(jump_dest)
+            if self.board.get_state(jump_dest) == 1:
+                self.board.move(coord, jump_dest, end_turn)
+                return jump_dest
+            
+        return None
+                 
     def _get_adjacent_coord(self, coord: Coord, direction: Direction) -> Coord:
         if direction == Direction.E:
             new_coord = Coord(coord.x+1, coord.y)
@@ -135,8 +135,8 @@ class Board():
     history = []
 
     def __init__(self, initial_state) -> None:
-        self.width = len(initial_state)
-        self.height = len(initial_state[0])
+        self.width = len(initial_state[0])
+        self.height = len(initial_state)
         self.history.append(BoardState(copy.deepcopy(initial_state), 0))
         
     def populate_all(self, coords) -> None:
@@ -171,12 +171,14 @@ class Board():
             y += 1
                
         return coords
-        
+    
+    def get_current_turn(self) -> int:
+        return self.history[-1].turn
         
     def get_state(self, coord: Coord) -> int:
         if coord.x > self.width - 1 or coord.y > self.height - 1:
             return 0
-        return self.history[-1].state[coord.y][coord.x]
+        return self._get_all_states().state[coord.y][coord.x]
             
     def _get_all_states(self) -> BoardState: 
         return BoardState(copy.deepcopy(self.history[-1].state), self.history[-1].turn)
@@ -213,6 +215,7 @@ class Animation():
             self.frames.append(frame_str)
             
     def run(self) -> None:
+        sleep(1)
         os.system('clear')
         for f in self.frames:
             print(f)
@@ -244,21 +247,30 @@ def run():
     board = Board(copy.deepcopy(initial_state))
     movement = Movement(board)
 
-    board.populate_all(p1.starting_coords)
+    # board.populate_all(p1.starting_coords)
+    board.populate_all([Coord(5, 14), Coord(5, 13)])
     directions = []
     for d in Direction:
         directions.append(d)
+        
+    # coords = board.get_coords_with_state(2)
     i = 0
-    while i <= 40:
-        coords = board.get_coords_with_state(2)
-        movement.move(random.choice(coords), random.choice(directions))
+    # while board.get_current_turn() <= 10:
+    while i <= 50:
+        # coords = board.get_coords_with_state(2)
+        # for c in coords:
+        #     print(c)
+        
+        movement.jump(Coord(5, 14), Direction.NE, True)
         i += 1
+        
+
         
     animator = Animation(board.history)
     animator.run()
-    
-def jumped(coord: Coord, new_coord: Coord) -> bool:
-   if abs(coord.x - new_coord.x) == 2 or abs(coord.y - new_coord.y) == 2:
-       return True
+
+# def jumped(coord: Coord, new_coord: Coord) -> bool:
+#    if abs(coord.x - new_coord.x) == 2 or abs(coord.y - new_coord.y) == 2:
+#        return True
            
 run()
