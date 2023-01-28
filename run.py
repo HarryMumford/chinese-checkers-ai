@@ -59,7 +59,7 @@ class Movement():
             self.board.move(coord, adjacent_coord, True)
             return adjacent_coord
     
-    def jump(self, coord: Coord, direction: Direction, end_turn: bool) -> Coord: 
+    def jump(self, coord: Coord, direction: Direction) -> Coord: 
         adjacent_coord = self._get_adjacent_coord(coord, direction)
         
         s = self.board.get_state(adjacent_coord)
@@ -69,7 +69,7 @@ class Movement():
             jump_dest = self._get_adjacent_coord(adjacent_coord, direction)
             print(jump_dest)
             if self.board.get_state(jump_dest) == 1:
-                self.board.move(coord, jump_dest, end_turn)
+                self.board.move(coord, jump_dest, False)
                 return jump_dest
             
         return None
@@ -247,30 +247,25 @@ def run():
     board = Board(copy.deepcopy(initial_state))
     movement = Movement(board)
 
-    # board.populate_all(p1.starting_coords)
-    board.populate_all([Coord(5, 14), Coord(5, 13)])
+    board.populate_all(p1.starting_coords)
     directions = []
     for d in Direction:
         directions.append(d)
         
-    # coords = board.get_coords_with_state(2)
-    i = 0
-    # while board.get_current_turn() <= 10:
-    while i <= 50:
-        # coords = board.get_coords_with_state(2)
-        # for c in coords:
-        #     print(c)
-        
-        movement.jump(Coord(5, 14), Direction.NE, True)
-        i += 1
+    coords = board.get_coords_with_state(2)
+    while board.get_current_turn() <= 10:
+        start = random.choice(coords)
+        dest = movement.jump(start, random.choice([Direction.NE, Direction.NW]), True)
+        if jumped(start, dest):
+            
         
 
         
     animator = Animation(board.history)
     animator.run()
 
-# def jumped(coord: Coord, new_coord: Coord) -> bool:
-#    if abs(coord.x - new_coord.x) == 2 or abs(coord.y - new_coord.y) == 2:
-#        return True
+def jumped(coord: Coord, new_coord: Coord) -> bool:
+   if abs(coord.x - new_coord.x) == 2 or abs(coord.y - new_coord.y) == 2:
+       return True
            
 run()
