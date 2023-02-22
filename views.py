@@ -4,31 +4,41 @@ import domain
 
 class Animation():
     frames = []
+    debug: bool
 
-    def __init__(self, game_history) -> None:
+    def __init__(self, game_history, debug: bool) -> None:
         self.state_history = game_history 
-        for action in game_history:
-            frame_str = "turn: " + str(action.turn) + "\n"
-            count = 0
-            for line in action.cells:
-                i = 0
-                while i < 13 - len(line):
+        self.debug = debug
+        for board_state in game_history:
+            frame_str = "turn: " + str(board_state.turn) + "\n"
+            i = 0
+            for line in board_state.cells:
+                j = 0
+                while j < (len(board_state.cells) - i):
                     frame_str += "  "
-                    i += 1
+                    j += 1
                 for cell in line:
-                    if cell.state == domain.State.EMPTY:
-                        frame_str += "○   "
-                    if cell.state == domain.State.OCCUPIED:
-                        frame_str += "●   "
-                    if cell.state == domain.State.SELECTED:
-                        frame_str += "◎   "
+                    if cell == None:
+                        if debug == True:
+                            frame_str += ".   "
+                        else:
+                            frame_str += "    "
+                    else:
+                        if cell.state == domain.State.EMPTY:
+                            frame_str += "○   "
+                        if cell.state == domain.State.OCCUPIED:
+                            frame_str += "●   "
+                        if cell.state == domain.State.SELECTED:
+                            frame_str += "◎   "
                 frame_str += "\n"
-                count += 1
+                i += 1
             self.frames.append(frame_str)
             
     def run(self, frame_rate: float) -> None:
-        os.system('clear')
+        if self.debug == False:
+            os.system('clear')
         for f in self.frames:
             print(f)
             sleep(frame_rate)
-            os.system('clear')
+            if self.debug == False:
+                os.system('clear')
