@@ -33,6 +33,9 @@ class Animation():
                 frame_str += "\n"
                 i += 1
             self.frames.append(frame_str)
+    
+    def print_last(self) -> None:
+        print(self.frames[-1])
             
     def run(self, frame_rate: float) -> None:
         if self.debug == False:

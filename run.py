@@ -4,6 +4,7 @@ import random
 import views
 import domain
 from enum import Enum
+import unittest
 
 
 class Direction(Enum):
@@ -24,16 +25,43 @@ class NeighbourStates:
     NW: domain.State = domain.State.EMPTY
 
 
+class Coord:
+    x: int
+    y: int
+
+    def __init__(self, x: int, y: int) -> None:
+        self.x = x
+        self.y = y
+
+    def __str__(self) -> str:
+        return '[{0}, {1}]'.format(self.x, self.y)
+
+
 class Cell:
-    neighbour_states: NeighbourStates
+    moves: list
     state: domain.State = domain.State.EMPTY
 
     def __init__(self, state: domain.State) -> None:
         self.state = state
-        self.neighbour_states = NeighbourStates()
+        self.moves = []
     
+    def add_move(self, move: Coord) -> None:
+        for m in self.moves:
+            if move.x == m.x and move.y == m.y:
+                return
+        self.moves.append(move)
+
+    def delete_move(self, move: Coord) -> None:
+        for m in self.moves:
+            if move.x == m.x and move.y == m.y:
+                self.moves.remove(m)
+                return
+
     def __str__(self) -> str:
-        return '{0}'.format(self.state.value)
+        moves = ""
+        for m in self.moves:
+            moves += '[{0}, {1}] '.format(m.x, m.y)
+        return 'moves: {0}\nstate: {1}'.format(moves, self.state)
 
 
 class Colors:
@@ -48,53 +76,26 @@ class Colors:
     UNDERLINE = '\033[4m'
 
 
-class Coord:
-    x: int
-    y: int
-
-    def __init__(self, x: int, y: int) -> None:
-        self.x = x
-        self.y = y
-
-
 class Movement():
     def __init__(self, board) -> None:
         self.board: Board = board
 
-    def move(self, coord: Coord, direction: Direction) -> Coord:
-        selected: Cell = self.board.get_cell(coord.x, coord.y)
+    def move(self, start: Coord, dest: Coord):
+        selected: Cell = self.board.get_cell(start)
         if selected.state != domain.State.OCCUPIED:
             raise Exception("unable to move: this cell is not occupied")
-        new_x = coord.x
-        new_y = coord.y
-        if direction == Direction.NW:
-            new_x -= 1
-            new_y -= 1
-        elif direction == Direction.NE:
-            new_y -= 1
-        elif direction == Direction.E:
-            new_x += 1
-        elif direction == Direction.W:
-            new_x -= 1
-        elif direction == Direction.SW:
-            new_y += 1
-        elif direction == Direction.SE:
-            new_x += 1
-            new_y += 1
-        else:
-            raise Exception("direction not supported")
-        self.board.update_cell(coord.x, coord.y, domain.State.SELECTED)
+    
+        self.board.update_cell(start, domain.State.SELECTED)
         self.board.save_state()
-        self.board.update_cell(coord.x, coord.y, domain.State.EMPTY)
-        new_cell: Cell = self.board.get_cell(new_x, new_y)
-        if new_cell != domain.State.EMPTY:
+        self.board.update_cell(start, domain.State.EMPTY)
+        dest_cell: Cell = self.board.get_cell(dest)
+        if dest_cell.state != domain.State.EMPTY:
             raise Exception("unable to move: destination is not empty")
-        self.board.update_cell(new_x, new_y, domain.State.SELECTED)
+        self.board.update_cell(dest, domain.State.SELECTED)
         self.board.save_state()
-        self.board.update_cell(new_x, new_y, domain.State.OCCUPIED)
+        self.board.update_cell(dest, domain.State.OCCUPIED)
+        self.board.inc_turn()
         self.board.save_state()
-        return Coord(new_x, new_y)
-
 
 class BoardState:
     cells: list
@@ -125,27 +126,31 @@ class Board():
         self._pending_state = BoardState(initial_cells, 0)
         self._pending_changes = True
         self.save_state()
+        
+    def inc_turn(self) -> None:
+        self._pending_state.turn += 1
 
-    def get_cell(self, x: int, y: int) -> Cell:
+    def get_cell(self, coord: Coord) -> Cell:
         if self._pending_changes == True:
-            return copy.deepcopy(self._pending_state.cells[y][x])
-        return copy.deepcopy(self.history[-1].cells[y][x])
-    
+            return copy.deepcopy(self._pending_state.cells[coord.y][coord.x])
+        return copy.deepcopy(self.history[-1].cells[coord.y][coord.x])
+
     def get_cells(self) -> list:
         if self._pending_changes == True:
             return copy.deepcopy(self._pending_state.cells)
         return copy.deepcopy(self.history[-1].cells)
 
-    def update_cell(self, x: int, y: int, state: domain.State) -> None:
-        if x < 0 or y < 0:
+    def update_cell(self, coord: Coord, state: domain.State) -> None:
+        if coord.x < 0 or coord.y < 0:
             raise Exception("failed to update: x and y must be positive")
-        if self._pending_state.cells[y][x] == None:
+        if self._pending_state.cells[coord.y][coord.x] == None:
             raise Exception(
                 "failed to update: coordinates do not specify a cell")
         if self._pending_changes == False:
             self._pending_state = copy.deepcopy(self.history[-1])
-        self._pending_state.cells[y][x].state = state
-        self._update_neighbours(x, y)
+        self._pending_state.cells[coord.y][coord.x].state = state
+        if state == domain.State.OCCUPIED or state == domain.State.EMPTY:
+            self._update_moves(coord)
         self._pending_changes = True
 
     def save_state(self) -> None:
@@ -153,49 +158,37 @@ class Board():
             self.history.append(self._pending_state)
         self._pending_changes = False
 
-    def _update_neighbours(self, x: int, y: int) -> None:
+    def _update_moves(self, coord: Coord) -> None:
         current_state_cells = self._pending_state.cells
-        cell: Cell = current_state_cells[y][x]
-        # look north
-        if y > 0:
-            nw_neighbour: Cell = current_state_cells[y - 1][x - 1]
-            if nw_neighbour != None:
-                nw_neighbour.neighbour_states.SE = cell.state
-                cell.neighbour_states.NW = nw_neighbour.state
+        cell: Cell = current_state_cells[coord.y][coord.x]
+        if cell.state == domain.State.EMPTY:
+            cell.moves.clear()
+            
+        affected_cells_coords = [
+            Coord(coord.x - 1, coord.y - 1),    # nw
+            Coord(coord.x, coord.y-1),          # ne
+            Coord(coord.x-1, coord.y),          # w
+            Coord(coord.x+1, coord.y),          # e
+            Coord(coord.x, coord.y+1),          # sw
+            Coord(coord.x+1, coord.y+1)         # se
+        ]
+        
+        for c in affected_cells_coords:
+            affected_cell: Cell = current_state_cells[c.y][c.x]
+            
+            if affected_cell == None:
+                continue
+            
+            if cell.state == domain.State.OCCUPIED:
+                if affected_cell.state == domain.State.EMPTY:
+                    cell.add_move(Coord(c.x, c.y))
+                if affected_cell.state == domain.State.OCCUPIED:
+                    affected_cell.delete_move(coord)
+            
+            if cell.state == domain.State.EMPTY and affected_cell.state == domain.State.OCCUPIED:
+                affected_cell.add_move(Coord(coord.x, coord.y))
 
-            if x < len(current_state_cells[y]):
-                ne_neighbour: Cell = current_state_cells[y - 1][x]
-                if ne_neighbour != None:
-                    ne_neighbour.neighbour_states.SW = cell.state
-                    cell.neighbour_states.NE = ne_neighbour.state
-
-        # look west
-        if x > 0:
-            w_neighbour: Cell = current_state_cells[y][x - 1]
-            if w_neighbour != None:
-                w_neighbour.neighbour_states.E = cell.state
-                cell.neighbour_states.W = w_neighbour.state
-
-        # look east
-        if x < len(current_state_cells[y]):
-            e_neighbour: Cell = current_state_cells[y][x + 1]
-            if e_neighbour != None:
-                e_neighbour.neighbour_states.W = cell.state
-                cell.neighbour_states.E = e_neighbour.state
-
-        # look south
-        if y < len(current_state_cells):
-            sw_neighbour: Cell = current_state_cells[y - 1][x]
-            if sw_neighbour != None:
-                sw_neighbour.neighbour_states.NE = cell.state
-                cell.neighbour_states.SW = sw_neighbour.state
-            if x < len(current_state_cells):
-                se_neighbour: Cell = current_state_cells[y - 1][x - 1]
-                if se_neighbour != None:
-                    se_neighbour.neighbour_states.NW = cell.state
-                    cell.neighbour_states.SE = se_neighbour.state
-
-
+               
 class Player:
     starting_coords: list
 
@@ -257,27 +250,31 @@ def run():
     ])
 
     for coord in p1.starting_coords:
-        board.update_cell(coord.x, coord.y, domain.State.OCCUPIED)
-
+        board.update_cell(coord, domain.State.OCCUPIED)
     board.save_state()
-    
-    direction = random.choice(list(Direction))
-    print(direction.name)
-    movable: list = []
-    for row in board.get_cells():
-        for c in row:
-            cell: Cell = c
-            if cell == None:
-                continue
-            if cell.state != domain.State.OCCUPIED:
-                continue
-            print(cell.neighbour_states.__dict__.keys())
-            
-    
+        
+    i = 0
+    while i < 100:
+        movable: list = []
+        y = 0
+        for r in board.get_cells():
+            x = 0
+            for c in r:
+                c: Cell
+                if c != None and c.state == domain.State.OCCUPIED:
+                    if len(c.moves) > 0:
+                        movable.append(Coord(x, y)) 
+                x += 1
+            y += 1
+        selected_coord: Coord = random.choice(movable)
+        selected_cell: Cell =  board.get_cell(selected_coord)
+        dest: Coord = random.choice(selected_cell.moves)
+        movement.move(selected_coord, dest)
+        i += 1
 
-    
-    animator = views.Animation(board.history, True)
-    animator.run(0.5)
-
+             
+    animator = views.Animation(board.history, False)
+    animator.run(0.1)
 
 run()
+
